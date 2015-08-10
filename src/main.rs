@@ -43,6 +43,12 @@ struct Todo {
     title: String,
 }
 
+impl Todo {
+    fn new(row: postgres::rows::Row) -> Todo {
+        Todo { title: row.get("title") }
+    }
+}
+
 fn main() {
     let mut router = Router::new();
     router.get("/", |_: &mut Request| {
@@ -58,10 +64,10 @@ fn main() {
         let id = params.find("id").unwrap().parse::<i32>().unwrap();
 
         let stmt = conn.prepare("SELECT id, title FROM todos WHERE id = $1").unwrap();
-        let mut result = stmt.query(&[&id]).unwrap();
+        let result = stmt.query(&[&id]).unwrap();
         let row = result.iter().next().unwrap();
 
-        let todo = Todo { title: row.get("title") };
+        let todo = Todo::new(row);
         let encoded = json::encode(&todo).unwrap();
         Ok(Response::with((status::Ok, encoded)))
     });
