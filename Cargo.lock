@@ -1,0 +1,4 @@
+[root]
+name = "todo-backend-rust"
+version = "0.1.0"
+
