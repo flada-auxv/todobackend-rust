@@ -5,3 +5,5 @@ authors = ["flada-auxv <aseknock@gmail.com>"]
 
 [dependencies]
 iron = "*"
+router = "*"
+unicase = "*"
