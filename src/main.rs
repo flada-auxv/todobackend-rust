@@ -1,14 +1,16 @@
 extern crate iron;
 extern crate router;
-extern crate unicase;
-
 use iron::prelude::*;
 use iron::status;
 use iron::headers;
 use iron::method::{Options, Get, Post};
 use iron::AfterMiddleware;
 
+extern crate unicase;
 use unicase::UniCase;
+
+extern crate rustc_serialize;
+use rustc_serialize::json;
 
 struct CorsSupport;
 
@@ -21,11 +23,23 @@ impl AfterMiddleware for CorsSupport {
     }
 }
 
+#[derive(RustcDecodable, RustcEncodable)]
+struct Todo {
+    title: String,
+}
+
 fn main() {
     let mut router = router::Router::new();
     router.get("/", |_: &mut Request| {
         let res = Response::with((status::Ok, "Hello World!"));
         Ok(res)
+    });
+
+    router.post("/", |_: &mut Request| {
+        let todo = Todo { title: "a todo".to_string() };
+        let encoded = json::encode(&todo).unwrap();
+
+        Ok(Response::with((status::Ok, encoded)))
     });
 
     let mut chain = Chain::new(router);
