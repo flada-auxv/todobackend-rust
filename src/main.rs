@@ -46,8 +46,8 @@ fn main() {
         Ok(Response::with(status::Ok))
     });
 
-    let mut chain = Chain::new(router);
-    chain.link_after(CorsSupport);
+    let mut middleware = Chain::new(router);
+    middleware.link_after(CorsSupport);
 
-    Iron::new(chain).http("localhost:3000").unwrap();
+    Iron::new(middleware).http("localhost:3000").unwrap();
 }
