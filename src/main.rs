@@ -1,19 +1,25 @@
 extern crate iron;
-extern crate router;
 use iron::prelude::*;
 use iron::status;
 use iron::headers;
 use iron::method::{Options, Get, Post, Delete};
 use iron::AfterMiddleware;
-
+use iron::typemap::Key;
+extern crate router;
+extern crate persistent;
 extern crate unicase;
 use unicase::UniCase;
 
 extern crate rustc_serialize;
 use rustc_serialize::json;
 
-struct CorsSupport;
+extern crate postgres;
+extern crate r2d2;
+extern crate r2d2_postgres;
+use r2d2::{Pool, PooledConnection};
+use r2d2_postgres::PostgresConnectionManager;
 
+struct CorsSupport;
 impl AfterMiddleware for CorsSupport {
     fn after(&self, _: &mut Request, mut res: Response) -> IronResult<Response> {
         res.headers.set(headers::AccessControlAllowOrigin::Any);
@@ -21,6 +27,14 @@ impl AfterMiddleware for CorsSupport {
         res.headers.set(headers::AccessControlAllowMethods(vec![Options, Get, Post, Delete]));
         Ok(res)
     }
+}
+
+pub type PostgresPool = Pool<PostgresConnectionManager>;
+pub type PostgresPooledConnection = PooledConnection<PostgresConnectionManager>;
+
+struct AppDb;
+impl Key for AppDb {
+    type Value = PostgresPool;
 }
 
 #[derive(RustcDecodable, RustcEncodable)]
@@ -46,7 +60,12 @@ fn main() {
         Ok(Response::with(status::Ok))
     });
 
+    let config = r2d2::Config::default();
+    let manager = PostgresConnectionManager::new("postgres://postgres@localhost", postgres::SslMode::None).unwrap();
+    let pool = r2d2::Pool::new(config, manager).unwrap();
+
     let mut middleware = Chain::new(router);
+    middleware.link(persistent::Read::<AppDb>::both(pool));
     middleware.link_after(CorsSupport);
 
     Iron::new(middleware).http("localhost:3000").unwrap();

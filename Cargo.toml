@@ -6,5 +6,9 @@ authors = ["flada-auxv <aseknock@gmail.com>"]
 [dependencies]
 iron = "*"
 router = "*"
+persistent = "*"
 unicase = "*"
 rustc-serialize = "*"
+postgres = "*"
+r2d2 = "*"
+r2d2_postgres= "*"
