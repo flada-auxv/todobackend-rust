@@ -6,6 +6,7 @@ use iron::method::{Options, Get, Post, Delete};
 use iron::AfterMiddleware;
 use iron::typemap::Key;
 extern crate router;
+use router::Router;
 extern crate persistent;
 extern crate unicase;
 use unicase::UniCase;
@@ -43,10 +44,26 @@ struct Todo {
 }
 
 fn main() {
-    let mut router = router::Router::new();
+    let mut router = Router::new();
     router.get("/", |_: &mut Request| {
         let res = Response::with((status::Ok, "Hello World!"));
         Ok(res)
+    });
+
+    router.get("/todos/:id", |req: &mut Request| {
+        let pool = req.get::<persistent::Read<AppDb>>().unwrap();
+        let conn = pool.get().unwrap();
+
+        let params = req.extensions.get::<Router>().unwrap();
+        let id = params.find("id").unwrap().parse::<i32>().unwrap();
+
+        let stmt = conn.prepare("SELECT id, title FROM todos WHERE id = $1").unwrap();
+        let mut result = stmt.query(&[&id]).unwrap();
+        let row = result.iter().next().unwrap();
+
+        let todo = Todo { title: row.get("title") };
+        let encoded = json::encode(&todo).unwrap();
+        Ok(Response::with((status::Ok, encoded)))
     });
 
     router.post("/", |_: &mut Request| {
@@ -61,7 +78,7 @@ fn main() {
     });
 
     let config = r2d2::Config::default();
-    let manager = PostgresConnectionManager::new("postgres://postgres@localhost", postgres::SslMode::None).unwrap();
+    let manager = PostgresConnectionManager::new("postgres://flada@localhost/todobackend-rust", postgres::SslMode::None).unwrap();
     let pool = r2d2::Pool::new(config, manager).unwrap();
 
     let mut middleware = Chain::new(router);
