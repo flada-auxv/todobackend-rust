@@ -88,8 +88,12 @@ fn main() {
         Ok(Response::with((status::Ok, encoded)))
     });
 
-    router.delete("/", |_: &mut Request| {
-        Ok(Response::with(status::Ok))
+    router.delete("/todos", |req: &mut Request| {
+        let conn = DbConnectionPool::get_connection(req);
+
+        conn.execute("TRUNCATE todos", &[]).unwrap();
+
+        Ok(Response::with((status::Ok)))
     });
 
     let config = r2d2::Config::default();
