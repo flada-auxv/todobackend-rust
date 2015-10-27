@@ -17,8 +17,6 @@ use rustc_serialize::json;
 extern crate postgres;
 extern crate r2d2;
 extern crate r2d2_postgres;
-use r2d2::{Pool, PooledConnection};
-use r2d2_postgres::PostgresConnectionManager;
 
 struct CorsSupport;
 impl AfterMiddleware for CorsSupport {
@@ -30,12 +28,9 @@ impl AfterMiddleware for CorsSupport {
     }
 }
 
-pub type PostgresPool = Pool<PostgresConnectionManager>;
-pub type PostgresPooledConnection = PooledConnection<PostgresConnectionManager>;
-
-struct AppDb;
-impl Key for AppDb {
-    type Value = PostgresPool;
+struct DbConnectionPool;
+impl Key for DbConnectionPool {
+    type Value = r2d2::Pool<r2d2_postgres::PostgresConnectionManager>;
 }
 
 #[derive(RustcDecodable, RustcEncodable)]
@@ -57,7 +52,7 @@ fn main() {
     });
 
     router.get("/todos/:id", |req: &mut Request| {
-        let pool = req.get::<persistent::Read<AppDb>>().unwrap();
+        let pool = req.get::<persistent::Read<DbConnectionPool>>().unwrap();
         let conn = pool.get().unwrap();
 
         let params = req.extensions.get::<Router>().unwrap();
@@ -84,11 +79,11 @@ fn main() {
     });
 
     let config = r2d2::Config::default();
-    let manager = PostgresConnectionManager::new("postgres://flada@localhost/todobackend-rust", postgres::SslMode::None).unwrap();
+    let manager = r2d2_postgres::PostgresConnectionManager::new("postgres://flada@localhost/todobackend-rust", postgres::SslMode::None).unwrap();
     let pool = r2d2::Pool::new(config, manager).unwrap();
 
     let mut middleware = Chain::new(router);
-    middleware.link(persistent::Read::<AppDb>::both(pool));
+    middleware.link(persistent::Read::<DbConnectionPool>::both(pool));
     middleware.link_after(CorsSupport);
 
     Iron::new(middleware).http("localhost:3000").unwrap();
