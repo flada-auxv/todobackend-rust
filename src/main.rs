@@ -35,6 +35,13 @@ impl Key for DbConnectionPool {
     type Value = Pool;
 }
 impl DbConnectionPool {
+    fn setup() -> Pool {
+        let config = r2d2::Config::default();
+        // TODO 接続先を外から与えられるようにする
+        let manager = r2d2_postgres::PostgresConnectionManager::new("postgres://flada@localhost/todobackend-rust", postgres::SslMode::None).unwrap();
+        r2d2::Pool::new(config, manager).unwrap()
+    }
+
     fn get_connection(req: &mut iron::request::Request) -> PooledConnection {
         let pool = req.get::<persistent::Read<DbConnectionPool>>().unwrap();
         pool.get().unwrap()
@@ -96,9 +103,7 @@ fn main() {
         Ok(Response::with((status::Ok)))
     });
 
-    let config = r2d2::Config::default();
-    let manager = r2d2_postgres::PostgresConnectionManager::new("postgres://flada@localhost/todobackend-rust", postgres::SslMode::None).unwrap();
-    let pool = r2d2::Pool::new(config, manager).unwrap();
+    let pool = DbConnectionPool::setup();
 
     let mut middleware = Chain::new(router);
     middleware.link(persistent::Read::<DbConnectionPool>::both(pool));
