@@ -81,7 +81,7 @@ fn main() {
         Ok(Response::with((status::Ok, json::encode(&Todo::new(row)).unwrap())))
     });
 
-    router.post("/", |_: &mut Request| {
+    router.post("/todos", |_: &mut Request| {
         let todo = Todo { title: "a todo".to_string() };
         let encoded = json::encode(&todo).unwrap();
 
