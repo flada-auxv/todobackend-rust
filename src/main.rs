@@ -78,9 +78,7 @@ fn main() {
         let result = stmt.query(&[&id]).unwrap();
         let row = result.iter().next().unwrap();
 
-        let todo = Todo::new(row);
-        let encoded = json::encode(&todo).unwrap();
-        Ok(Response::with((status::Ok, encoded)))
+        Ok(Response::with((status::Ok, json::encode(&Todo::new(row)).unwrap())))
     });
 
     router.post("/", |_: &mut Request| {
