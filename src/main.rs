@@ -28,9 +28,17 @@ impl AfterMiddleware for CorsSupport {
     }
 }
 
+type Pool = r2d2::Pool<r2d2_postgres::PostgresConnectionManager>;
+type PooledConnection = r2d2::PooledConnection<r2d2_postgres::PostgresConnectionManager>;
 struct DbConnectionPool;
 impl Key for DbConnectionPool {
-    type Value = r2d2::Pool<r2d2_postgres::PostgresConnectionManager>;
+    type Value = Pool;
+}
+impl DbConnectionPool {
+    fn get_connection(req: &mut iron::request::Request) -> PooledConnection {
+        let pool = req.get::<persistent::Read<DbConnectionPool>>().unwrap();
+        pool.get().unwrap()
+    }
 }
 
 #[derive(RustcDecodable, RustcEncodable)]
@@ -52,8 +60,7 @@ fn main() {
     });
 
     router.get("/todos/:id", |req: &mut Request| {
-        let pool = req.get::<persistent::Read<DbConnectionPool>>().unwrap();
-        let conn = pool.get().unwrap();
+        let conn = DbConnectionPool::get_connection(req);
 
         let params = req.extensions.get::<Router>().unwrap();
         let id = params.find("id").unwrap().parse::<i32>().unwrap();
