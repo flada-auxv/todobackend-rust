@@ -45,7 +45,6 @@ impl DbConnectionPool {
 struct Todo {
     title: String,
 }
-
 impl Todo {
     fn new(row: postgres::rows::Row) -> Todo {
         Todo { title: row.get("title") }
@@ -55,8 +54,18 @@ impl Todo {
 fn main() {
     let mut router = Router::new();
     router.get("/", |_: &mut Request| {
-        let res = Response::with((status::Ok, "Hello World!"));
-        Ok(res)
+        Ok(Response::with((status::Ok, "hi")))
+    });
+
+    router.get("/todos", |req: &mut Request| {
+        let conn = DbConnectionPool::get_connection(req);
+
+        let stmt = conn.prepare("SELECT id, title FROM todos").unwrap();
+        let rows = stmt.query(&[]).unwrap();
+
+        let todos = rows.iter().map(|row| Todo::new(row)).collect::<Vec<_>>();
+
+        Ok(Response::with((status::Ok, json::encode(&todos).unwrap())))
     });
 
     router.get("/todos/:id", |req: &mut Request| {
