@@ -8,6 +8,7 @@ use iron::typemap::Key;
 extern crate router;
 use router::Router;
 extern crate persistent;
+extern crate bodyparser;
 extern crate unicase;
 use unicase::UniCase;
 
@@ -48,7 +49,7 @@ impl DbConnectionPool {
     }
 }
 
-#[derive(RustcDecodable, RustcEncodable)]
+#[derive(Debug, Clone, RustcDecodable, RustcEncodable)]
 struct Todo {
     title: String,
 }
@@ -88,11 +89,20 @@ fn main() {
         Ok(Response::with((status::Ok, json::encode(&Todo::new(row)).unwrap())))
     });
 
-    router.post("/todos", |_: &mut Request| {
-        let todo = Todo { title: "a todo".to_string() };
-        let encoded = json::encode(&todo).unwrap();
+    router.post("/todos", |req: &mut Request| {
+        let conn = DbConnectionPool::get_connection(req);
 
-        Ok(Response::with((status::Ok, encoded)))
+        let todo = req.get::<bodyparser::Struct<Todo>>();
+
+        match todo {
+            Ok(Some(todo)) => {
+                conn.execute("INSERT INTO todos (title) VALUES ($1)", &[&todo.title]).unwrap();
+
+                Ok(Response::with((status::Ok, json::encode(&todo).unwrap())))
+            },
+            Ok(None) => panic!(""),
+            Err(_) => panic!("")
+        }
     });
 
     router.delete("/todos", |req: &mut Request| {
@@ -105,8 +115,11 @@ fn main() {
 
     let pool = DbConnectionPool::setup();
 
+    const MAX_BODY_LENGTH: usize = 1024 * 1024 * 10;
+
     let mut middleware = Chain::new(router);
     middleware.link(persistent::Read::<DbConnectionPool>::both(pool));
+    middleware.link_before(persistent::Read::<bodyparser::MaxBodyLength>::one(MAX_BODY_LENGTH));
     middleware.link_after(CorsSupport);
 
     Iron::new(middleware).http("localhost:3000").unwrap();

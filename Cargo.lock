@@ -2,6 +2,7 @@
 name = "todo-backend-rust"
 version = "0.1.0"
 dependencies = [
+ "bodyparser 0.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "iron 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "persistent 0.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "postgres 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -25,6 +26,17 @@ dependencies = [
 name = "bitflags"
 version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "bodyparser"
+version = "0.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "iron 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "persistent 0.0.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "plugin 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rustc-serialize 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "bufstream"
