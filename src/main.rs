@@ -92,9 +92,7 @@ fn main() {
     router.post("/todos", |req: &mut Request| {
         let conn = DbConnectionPool::get_connection(req);
 
-        let todo = req.get::<bodyparser::Struct<Todo>>();
-
-        match todo {
+        match req.get::<bodyparser::Struct<Todo>>() {
             Ok(Some(todo)) => {
                 conn.execute("INSERT INTO todos (title) VALUES ($1)", &[&todo.title]).unwrap();
 
