@@ -68,7 +68,7 @@ fn main() {
     router.get("/todos", |req: &mut Request| {
         let conn = DbConnectionPool::get_connection(req);
 
-        let stmt = conn.prepare("SELECT id, title FROM todos").unwrap();
+        let stmt = conn.prepare("SELECT * FROM todos").unwrap();
         let rows = stmt.query(&[]).unwrap();
 
         let todos = rows.iter().map(|row| Todo::new(row)).collect::<Vec<_>>();
@@ -82,7 +82,7 @@ fn main() {
         let params = req.extensions.get::<Router>().unwrap();
         let id = params.find("id").unwrap().parse::<i32>().unwrap();
 
-        let stmt = conn.prepare("SELECT id, title FROM todos WHERE id = $1").unwrap();
+        let stmt = conn.prepare("SELECT * FROM todos WHERE id = $1").unwrap();
         let result = stmt.query(&[&id]).unwrap();
         let row = result.iter().next().unwrap();
 
