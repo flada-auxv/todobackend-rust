@@ -69,14 +69,8 @@ impl Todo {
 impl ToJson for Todo {
     fn to_json(&self) -> Json {
         let mut d = BTreeMap::new();
-
-        let comp = match self.completed {
-            Some(completed) => completed,
-            None => false,
-        };
-
         d.insert("title".to_string(), self.title.to_json());
-        d.insert("completed".to_string(), comp.to_json());
+        d.insert("completed".to_string(), self.completed.unwrap_or(false).to_json());
         Json::Object(d)
     }
 }
@@ -116,12 +110,7 @@ fn main() {
 
         match req.get::<bodyparser::Struct<Todo>>() {
             Ok(Some(todo)) => {
-                // XXX ｼｭｯとやっておいてほしい
-                let completed = match todo.completed {
-                    Some(completed) => completed,
-                    None => false,
-                };
-                conn.execute("INSERT INTO todos (title, completed) VALUES ($1, $2)", &[&todo.title, &completed]).unwrap();
+                conn.execute("INSERT INTO todos (title, completed) VALUES ($1, $2)", &[&todo.title, &todo.completed.unwrap_or(false)]).unwrap();
 
                 Ok(Response::with((status::Ok, todo.to_json_str())))
             },
