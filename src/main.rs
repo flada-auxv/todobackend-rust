@@ -54,12 +54,14 @@ impl DbConnectionPool {
 struct Todo {
     title: String,
     completed: Option<bool>,
+    url: Option<String>,
 }
 impl Todo {
     fn new(row: postgres::rows::Row) -> Todo {
         Todo {
             title: row.get("title"),
             completed: row.get("completed"),
+            url: row.get("url"),
         }
     }
     fn to_json_str(&self) -> String {
@@ -71,6 +73,8 @@ impl ToJson for Todo {
         let mut d = BTreeMap::new();
         d.insert("title".to_string(), self.title.to_json());
         d.insert("completed".to_string(), self.completed.unwrap_or(false).to_json());
+        // clone() …？
+        d.insert("url".to_string(), self.url.clone().unwrap_or("".to_string()).to_json());
         Json::Object(d)
     }
 }
@@ -110,7 +114,10 @@ fn main() {
 
         match req.get::<bodyparser::Struct<Todo>>() {
             Ok(Some(todo)) => {
-                conn.execute("INSERT INTO todos (title, completed) VALUES ($1, $2)", &[&todo.title, &todo.completed.unwrap_or(false)]).unwrap();
+                conn.execute(
+                    "INSERT INTO todos (title, completed, url) VALUES ($1, $2, $3)",
+                    &[&todo.title, &todo.completed.unwrap_or(false), &todo.url]
+                ).unwrap();
 
                 Ok(Response::with((status::Ok, todo.to_json_str())))
             },
