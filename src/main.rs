@@ -13,7 +13,8 @@ extern crate unicase;
 use unicase::UniCase;
 
 extern crate rustc_serialize;
-use rustc_serialize::json;
+use rustc_serialize::json::{self, Json, ToJson};
+use std::collections::BTreeMap;
 
 extern crate postgres;
 extern crate r2d2;
@@ -49,13 +50,34 @@ impl DbConnectionPool {
     }
 }
 
-#[derive(Debug, Clone, RustcDecodable, RustcEncodable)]
+#[derive(Debug, Clone, RustcDecodable)]
 struct Todo {
     title: String,
+    completed: Option<bool>,
 }
 impl Todo {
     fn new(row: postgres::rows::Row) -> Todo {
-        Todo { title: row.get("title") }
+        Todo {
+            title: row.get("title"),
+            completed: row.get("completed"),
+        }
+    }
+    fn to_json_str(&self) -> String {
+        self.to_json().to_string()
+    }
+}
+impl ToJson for Todo {
+    fn to_json(&self) -> Json {
+        let mut d = BTreeMap::new();
+
+        let comp = match self.completed {
+            Some(completed) => completed,
+            None => false,
+        };
+
+        d.insert("title".to_string(), self.title.to_json());
+        d.insert("completed".to_string(), comp.to_json());
+        Json::Object(d)
     }
 }
 
@@ -71,7 +93,7 @@ fn main() {
         let stmt = conn.prepare("SELECT * FROM todos").unwrap();
         let rows = stmt.query(&[]).unwrap();
 
-        let todos = rows.iter().map(|row| Todo::new(row)).collect::<Vec<_>>();
+        let todos = rows.iter().map(|row| Todo::new(row).to_json()).collect::<Vec<_>>();
 
         Ok(Response::with((status::Ok, json::encode(&todos).unwrap())))
     });
@@ -86,7 +108,7 @@ fn main() {
         let result = stmt.query(&[&id]).unwrap();
         let row = result.iter().next().unwrap();
 
-        Ok(Response::with((status::Ok, json::encode(&Todo::new(row)).unwrap())))
+        Ok(Response::with((status::Ok, Todo::new(row).to_json_str())))
     });
 
     router.post("/todos", |req: &mut Request| {
@@ -94,12 +116,17 @@ fn main() {
 
         match req.get::<bodyparser::Struct<Todo>>() {
             Ok(Some(todo)) => {
-                conn.execute("INSERT INTO todos (title) VALUES ($1)", &[&todo.title]).unwrap();
+                // XXX ｼｭｯとやっておいてほしい
+                let completed = match todo.completed {
+                    Some(completed) => completed,
+                    None => false,
+                };
+                conn.execute("INSERT INTO todos (title, completed) VALUES ($1, $2)", &[&todo.title, &completed]).unwrap();
 
-                Ok(Response::with((status::Ok, json::encode(&todo).unwrap())))
+                Ok(Response::with((status::Ok, todo.to_json_str())))
             },
             Ok(None) => panic!(""),
-            Err(_) => panic!("")
+            Err(err) => panic!("Error: {:?}", err),
         }
     });
 
