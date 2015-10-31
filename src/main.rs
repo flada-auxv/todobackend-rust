@@ -1,3 +1,5 @@
+use std::env;
+
 extern crate iron;
 use iron::prelude::*;
 use iron::status;
@@ -39,8 +41,8 @@ impl Key for DbConnectionPool {
 impl DbConnectionPool {
     fn setup() -> Pool {
         let config = r2d2::Config::default();
-        // TODO 接続先を外から与えられるようにする
-        let manager = r2d2_postgres::PostgresConnectionManager::new("postgres://flada@localhost/todobackend-rust", postgres::SslMode::None).unwrap();
+        let url = env::var("DATABASE_URL").unwrap_or_else(|e| panic!("{}", e));
+        let manager = r2d2_postgres::PostgresConnectionManager::new(url.as_ref(), postgres::SslMode::None).unwrap();
         r2d2::Pool::new(config, manager).unwrap()
     }
 
